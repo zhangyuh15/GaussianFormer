@@ -194,15 +194,26 @@ class DeformableFeatureAggregation(BaseModule):
                         self.num_groups,
                     )
                 )
-                points_2d = (
-                    self.project_points(
+                print(temp_key_points.shape, temp_metas["projection_mat"].shape,
+                        )
+                ttttt = self.project_points(
                         temp_key_points,
                         temp_metas["projection_mat"],
                         temp_metas.get("image_wh"),
                     )
-                    .permute(0, 2, 3, 1, 4)
-                    .reshape(bs, num_anchor * self.num_pts, self.num_cams, 2)
-                )
+                ttt = ttttt.permute(0, 2, 3, 1, 4)
+                print("ll: ", ttttt.shape, ttt.shape)
+                points_2d = ttt.reshape(bs, num_anchor * self.num_pts, self.num_cams, 2)
+                
+                # points_2d = (
+                #     self.project_points(
+                #         temp_key_points,
+                #         temp_metas["projection_mat"],
+                #         temp_metas.get("image_wh"),
+                #     )
+                #     .permute(0, 2, 3, 1, 4)
+                #     .reshape(bs, num_anchor * self.num_pts, self.num_cams, 2)
+                # )
                 temp_features_next = DAF.apply(
                     *temp_feature_maps, points_2d, weights
                 ).reshape(bs, num_anchor, self.num_pts, self.embed_dims)
@@ -267,6 +278,7 @@ class DeformableFeatureAggregation(BaseModule):
         pts_extend = torch.cat(
             [key_points, torch.ones_like(key_points[..., :1])], dim=-1
         )
+        print("1: ", projection_mat.shape, pts_extend.shape, key_points.shape)
         points_2d = torch.matmul(
             projection_mat[:, :, None, None], pts_extend[:, None, ..., None]
         ).squeeze(-1)
@@ -275,6 +287,7 @@ class DeformableFeatureAggregation(BaseModule):
         )
         if image_wh is not None:
             points_2d = points_2d / image_wh[:, :, None, None]
+        print("2: ", points_2d.shape)
         return points_2d
 
     @staticmethod

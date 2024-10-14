@@ -54,6 +54,7 @@ class GaussianHead(BaseTaskHead):
     def _sampling(self, gt_xyz, gt_label, gt_mask=None):
         if gt_mask is None:
             gt_label = gt_label.flatten(1)
+            print("xyz: ", gt_xyz.shape)
             gt_xyz = gt_xyz.flatten(1, 3)
         else:
             assert gt_label.shape[0] == 1, "OccLoss does not support bs > 1"
