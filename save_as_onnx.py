@@ -65,7 +65,6 @@ def main(local_rank, args):
     metas['occ_cam_mask'] =  torch.randn([1, 1, 1, 1]).cuda()
     oout = my_model(imgs=image, metas=metas)
 
-    my_model.cpu()
     # print(oout)
     torch.onnx.export(my_model, (image, metas), "ddp.onnx", input_names=['input', "input1"],
                     output_names=['output'], opset_version=11)
