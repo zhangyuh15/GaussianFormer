@@ -14,10 +14,21 @@ from mmseg.models import build_segmentor
 import warnings
 warnings.filterwarnings("ignore")
 
+class TOSAVE(torch.nn.Module):
+    def __init__(self, f):
+        super().__init__()
+        self.f = f
+    
+    def forward(self, img,projection_mat, image_wh, occ_xyz, occ_label, occ_cam_mask):
+        meta=dict()
+        meta["projection_mat"] = projection_mat
+        meta["image_wh"] = image_wh
+        meta["occ_xyz"] = occ_xyz
+        meta["occ_label"] = occ_label
+        meta["occ_cam_mask"] = occ_cam_mask
 
-def pass_print(*args, **kwargs):
-    pass
-
+        return self.f(imgs=img, metas=meta)
+    
 def main(local_rank, args):
     # global settings
     set_random_seed(args.seed)
@@ -50,24 +61,41 @@ def main(local_rank, args):
     logger.info(f'Number of params: {n_parameters}')
     
     my_model = my_model.cuda()
-    raw_model = my_model
-    logger.info('done ddp model')
 
-    # print(my_model)
-
+    to_save = TOSAVE(my_model)
 
     image = torch.randn([1, 6, 3, 704, 256]).cuda() # 
     metas = dict()
-    metas["projection_mat"] = torch.randn([6, 1 , 24, 4]).cuda()
-    metas["image_wh"] = None # torch.Tensor((704, 256)).cuda()
-    metas['occ_xyz'] =  torch.randn([1, 1, 1, 3]).cuda()
-    metas['occ_label'] =  torch.randn([1, 1, 1, 1]).cuda()
-    metas['occ_cam_mask'] =  torch.randn([1, 1, 1, 1]).cuda()
-    oout = my_model(imgs=image, metas=metas)
+    # metas["projection_mat"] = torch.randn([6, 1 , 24, 4])# .cuda()
+    # metas["image_wh"] = None # torch.Tensor((704, 256)).cuda()
+    # metas['occ_xyz'] =  torch.randn([1, 1, 1, 3])# .cuda()
+    # metas['occ_label'] =  torch.randn([1, 1, 1, 1])# .cuda()
+    # metas['occ_cam_mask'] =  torch.randn([1, 1, 1, 1])# .cuda()
+    projection_mat= torch.randn([6, 1 , 24, 4]).cuda()
+    image_wh = None # torch.Tensor((704, 256)).cuda()
+    occ_xyz =  torch.randn([1, 1, 1, 3]).cuda()
+    occ_label =  torch.randn([1, 1, 1, 1]).cuda()
+    occ_cam_mask =  torch.randn([1, 1, 1, 1]).cuda()
 
+
+    # oout = my_model(imgs=image, metas=metas)
+    # print(type(my_model))
+    # for i, m in enumerate(my_model.modules()):
+    #     if i in [0, 1]:
+    #         continue
+    #     print(i, ": ", )
+    #     print(type(m))
+    #     kk = m.cpu()
+    # for i, m in enumerate(my_model.children()):
+    #     print(i, ": ", )
+    #     kk = m.cpu()
+    #     print(kk)
     # print(oout)
-    torch.onnx.export(my_model, (image, metas), "ddp.onnx", input_names=['input', "input1"],
-                    output_names=['output'], opset_version=11)
+    # torch.onnx.export(my_model, (image, metas), "ddp.onnx", input_names=['input', "input1"],
+    #                 output_names=['output'], opset_version=11)
+    all_input = (image,projection_mat, image_wh, occ_xyz, occ_label, occ_cam_mask)
+    torch.onnx.export(to_save, all_input, "ddp.onnx", input_names=['input0', "input1", "input2", "input3", "input4", "input5"],
+                     output_names=['output'])
     
 if __name__ == '__main__':
     # Training settings
@@ -79,11 +107,11 @@ if __name__ == '__main__':
     parser.add_argument('--vis-occ', action='store_true', default=False)
     args = parser.parse_args()
     
-    ngpus = torch.cuda.device_count()
+    ngpus = 1 # torch.cuda.device_count()
     args.gpus = ngpus
     print(args)
 
-    if ngpus > 1:
-        torch.multiprocessing.spawn(main, args=(args,), nprocs=args.gpus)
-    else:
-        main(0, args)
+    # if ngpus > 1:
+    # torch.multiprocessing.spawn(main, args=(args,), nprocs=args.gpus)
+    # else:
+    main(0, args)
